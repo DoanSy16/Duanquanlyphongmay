@@ -4,8 +4,8 @@ const compression = require('compression');
 
 require('dotenv').config();
 require('./src/connection_database');
-require('./src/connection_mongodb');
-require('./src/connection_redis');
+// require('./src/connection_mongodb');
+// require('./src/connection_redis');
 // require('./src/read_excel');
 
 const initRoutes = require('./src/routes');

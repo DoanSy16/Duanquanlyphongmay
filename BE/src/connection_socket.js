@@ -1,10 +1,29 @@
 import { JSON, JSONB } from 'sequelize';
 import * as services from '../src/services';
+import { da } from 'date-fns/locale';
 // const client = require('./connection_redis');
 const userStorage = require('../src/storage/UserDetailsStorage');
 export const connection_socket = (io) => {
-  io.on('connection', (socket) => {
 
+  const timer = setInterval(async () => {
+    try {
+      const now_date = new Date()
+      const d = `${now_date.getDate()}/${now_date.getMonth() + 1
+        }/${now_date.getFullYear()}`;
+      const [day, month, year] = d.split("/");
+      const custom_day = `${parseInt(day) < 10 ? '0' + day : day}/${parseInt(month) < 10 ? '0' + month : month}/${year.substring(2, 4)}`;
+      const data_home = await services.loadDataHome(custom_day);
+      const data_all_room = await services.loadDataWeek(custom_day);
+      const data = {
+        data_home: data_home.messages,
+        data_all_room: data_all_room.data
+      }
+      io.emit('send_to_action_refresh_new_data_home', data);
+    } catch (error) {
+      console.error('Error in timer interval: ', error);
+    }
+  }, 108000); // Mỗi 3h
+  io.on('connection', (socket) => {
 
     socket.on('disconnect', () => {
       console.log('Client disconnected: ' + socket.id);
@@ -34,79 +53,80 @@ export const connection_socket = (io) => {
 
     socket.on('send_on_dk_room', async (data) => {
       try {
-       const response= await services.insertNotifications(data.user_id, data.status_id, data.status_room, data.room_id, data.class_period_id, data.thu, data.day_create, data.start_day, data.end_day, data.description, data.day_choose)
+        const response = await services.insertNotifications(data.user_id, data.status_id, data.status_room, data.room_id, data.class_period_id, data.thu, data.day_create, data.start_day, data.end_day, data.description, data.day_choose)
         let refresh_data = await services.loadDataDk(data.day_choose);
         io.emit('send_to_action_refresh_data_emty_room', refresh_data.data);
         io.to('1').emit('send_data_emtyroom_notification', response.data);
       } catch (error) {
         console.log('err: ', error)
       }
-    })
+    });
 
 
 
-    const timer = setInterval(async () => {
-      try {
-        let time = '1';
-        const sender_id = socket.user_id; // Lấy ID của user đã tạo socket
-        const now = new Date();
-        const hours = String(now.getHours()).padStart(2, '0');
-        const minutes = String(now.getMinutes()).padStart(2, '0');
-        const seconds = String(now.getSeconds()).padStart(2, '0');
 
-        const formattedTime = `${hours}:${minutes}`;
-        const callApi = `${formattedTime}:${seconds}`;
-        // console.log('formattedTime: ',callApi)
-        // if (callApi == '22:30:00') {
-        //   const year = (now.getFullYear().toString().substring(2, 4))
-        //   const month = String(now.getMonth() + 1).padStart(2, '0'); // Tháng bắt đầu từ 0
-        //   const date = String(now.getDate()).padStart(2, '0');
-        //   const formattedDate = `${date}/${month}/${year}`;
-        //   // const response_data_home= await services.loadDataHome(formattedDate);
-        //   // const exists = await client.exists('load_data_home_day_now');
-        //   // const response = await client.get('load_data_home_day_now');
-        //   // console.log('res: ',exists)
-        //     // client.del('load_data_home_day_now')
-        //     // if(exists){
-        //     //   console.log('co1')
-        //     //   client.del('load_data_home_day_now')
-        //     //     await client.set('load_data_home_day_now',response_data_home);
-        //     // }
+    // const timer = setInterval(async () => {
+    //   try {
+    //     let time = '1';
+    //     const sender_id = socket.user_id; // Lấy ID của user đã tạo socket
+    //     const now = new Date();
+    //     const hours = String(now.getHours()).padStart(2, '0');
+    //     const minutes = String(now.getMinutes()).padStart(2, '0');
+    //     const seconds = String(now.getSeconds()).padStart(2, '0');
 
-        // }
-        if (formattedTime == '06:30') {
-          time = 1;
-        } else if (formattedTime == '09:00') {
-          time = 2;
-        } else if (formattedTime == '12:00') {
-          time = 3;
-        } else if (formattedTime == '14:30') {
-          time = 4
-        }
+    //     const formattedTime = `${hours}:${minutes}`;
+    //     const callApi = `${formattedTime}:${seconds}`;
+    //     // console.log('formattedTime: ',callApi)
+    //     // if (callApi == '22:30:00') {
+    //     //   const year = (now.getFullYear().toString().substring(2, 4))
+    //     //   const month = String(now.getMonth() + 1).padStart(2, '0'); // Tháng bắt đầu từ 0
+    //     //   const date = String(now.getDate()).padStart(2, '0');
+    //     //   const formattedDate = `${date}/${month}/${year}`;
+    //     //   // const response_data_home= await services.loadDataHome(formattedDate);
+    //     //   // const exists = await client.exists('load_data_home_day_now');
+    //     //   // const response = await client.get('load_data_home_day_now');
+    //     //   // console.log('res: ',exists)
+    //     //     // client.del('load_data_home_day_now')
+    //     //     // if(exists){
+    //     //     //   console.log('co1')
+    //     //     //   client.del('load_data_home_day_now')
+    //     //     //     await client.set('load_data_home_day_now',response_data_home);
+    //     //     // }
 
-        if (time != '') {
-          const onlineUsers = userStorage.findUsersByCondition(user => {
-            if (user.class_period_name == time && sender_id == user.id) {
-              const data = {
-                room_name: user.room_name,
-                discipline_name: user.discipline_name,
-                fullname: user.fullname,
-                class_period_name: user.class_period_name
-              }
-              io.to(sender_id).emit('send-notification-details', data);
-            }
-          });
-        }
+    //     // }
+    //     if (formattedTime == '06:30') {
+    //       time = 1;
+    //     } else if (formattedTime == '09:00') {
+    //       time = 2;
+    //     } else if (formattedTime == '12:00') {
+    //       time = 3;
+    //     } else if (formattedTime == '14:30') {
+    //       time = 4
+    //     }
 
-        // console.log('sender_id: ',sender_id)
-        if (sender_id) {
-          // const response = await services.countMessagesUnread(parseInt(sender_id));
-          // io.to(sender_id).emit('timer-call-unread-messages', response.messages[0].count);
-        }
-      } catch (error) {
-        console.error('Error in timer interval: ', error);
-      }
-    }, 1000); // Mỗi 10 giây
+    //     if (time != '') {
+    //       const onlineUsers = userStorage.findUsersByCondition(user => {
+    //         if (user.class_period_name == time && sender_id == user.id) {
+    //           const data = {
+    //             room_name: user.room_name,
+    //             discipline_name: user.discipline_name,
+    //             fullname: user.fullname,
+    //             class_period_name: user.class_period_name
+    //           }
+    //           io.to(sender_id).emit('send-notification-details', data);
+    //         }
+    //       });
+    //     }
+
+    //     // console.log('sender_id: ',sender_id)
+    //     if (sender_id) {
+    //       // const response = await services.countMessagesUnread(parseInt(sender_id));
+    //       // io.to(sender_id).emit('timer-call-unread-messages', response.messages[0].count);
+    //     }
+    //   } catch (error) {
+    //     console.error('Error in timer interval: ', error);
+    //   }
+    // }, 1000); // Mỗi 10 giây
 
     //   socket.on('send-messages', async (data) => {
     //     const sender_id = parseInt(data.message.sender_id);

@@ -7,10 +7,10 @@ const client = require('../connection_redis');
 export const loadHome = async (req, res) => {
     try {
         const { day } = req.body;
-        console.log('day: ',day)
-        const date = new Date();
-        const d = `${date.getDate()}/${date.getMonth() + 1
-            }/${(date.getFullYear().toString().substring(2, 4))}`;
+        // console.log('day: ',day)
+        // const date = new Date();
+        // const d = `${date.getDate()}/${date.getMonth() + 1
+        //     }/${(date.getFullYear().toString().substring(2, 4))}`;
         // if (new Date(day)== date) {
         //     const exists = await client.exists('load_data_home');
         //     if (!exists) {
